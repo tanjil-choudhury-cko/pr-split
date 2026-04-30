@@ -105,7 +105,7 @@ def resolve_base(base: str) -> str:
 
 def branch_name_for(origin_branch: str, title: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
-    return f"{origin_branch}/{slug}"
+    return f"{origin_branch}--{slug}"
 
 
 def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
