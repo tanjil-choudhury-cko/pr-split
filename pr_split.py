@@ -109,7 +109,11 @@ def branch_name_for(origin_branch: str, title: str) -> str:
 
 
 def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, check=check, text=True, capture_output=True)
+    result = subprocess.run(cmd, check=False, text=True, capture_output=True)
+    if check and result.returncode != 0:
+        console.print(f"[red]git error:[/] {result.stderr.strip()}")
+        raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+    return result
 
 
 def delete_branches(branch_names: list[str]) -> None:
