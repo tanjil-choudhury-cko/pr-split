@@ -157,10 +157,12 @@ Respond ONLY with a JSON array, no markdown fences, no explanation:
 
 
 def ask_claude_for_plan(files: list[str]) -> list[dict]:
+    console.print(f"[dim]Reading {len(files)} file(s)…[/]")
+    prompt = build_analysis_prompt(files)
+
     client = _get_bedrock_client()
 
-    with console.status("[bold cyan]Asking Claude to group files into independent PRs…[/]"):
-        prompt = build_analysis_prompt(files)
+    with console.status("[bold cyan]Grouping into pull requests…[/]"):
         raw = _invoke_claude(client, prompt)
 
     try:
@@ -303,7 +305,7 @@ def main():
     display_plan(plan, origin_branch)
 
     if not args.execute:
-        console.print("[dim]Run [bold]just split main --execute[/bold] to create the branches.[/]")
+        console.print("[dim]Run [bold]split --execute[/bold] to create the branches.[/]")
         return
 
     console.print("[bold yellow]This will create new git branches from[/] [cyan]main[/][bold yellow], one per PR group.[/]")
