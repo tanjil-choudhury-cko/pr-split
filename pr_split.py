@@ -305,7 +305,7 @@ def main():
     display_plan(plan, origin_branch)
 
     if not args.execute:
-        console.print("[dim]Run [bold]split --execute[/bold] to create the branches.[/]")
+        console.print("[dim]Run [bold]prsplit --execute[/bold] to create the branches.[/]")
         return
 
     console.print("[bold yellow]This will create new git branches from[/] [cyan]main[/][bold yellow], one per PR group.[/]")

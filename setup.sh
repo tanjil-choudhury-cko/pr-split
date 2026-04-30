@@ -18,14 +18,6 @@ else
   echo "✓ Homebrew already installed"
 fi
 
-# ── just ────────────────────────────────────────────────────────────────────
-if ! command -v just &>/dev/null; then
-  echo "Installing just..."
-  brew install just
-else
-  echo "✓ just already installed"
-fi
-
 # ── gh ──────────────────────────────────────────────────────────────────────
 if ! command -v gh &>/dev/null; then
   echo "Installing GitHub CLI..."
@@ -69,12 +61,12 @@ export AWS_PROFILE=playground14
 export ANTHROPIC_MODEL=eu.anthropic.claude-sonnet-4-5-20250929-v1:0
 # Re-authenticate when credentials expire (~8h): aws login --profile playground14 --region eu-west-1
 
-split() {
+prsplit() {
   unset AWS_BEARER_TOKEN_BEDROCK
   python3 ~/.pr-split/pr_split.py "$@"
 }
 EOF
-  echo "✓ Added 'split' command and Bedrock config to ~/.zshrc"
+  echo "✓ Added 'prsplit' command and Bedrock config to ~/.zshrc"
 fi
 
 source "$ZSHRC" 2>/dev/null || true
@@ -94,9 +86,9 @@ else
 fi
 
 echo ""
-echo "✓ All done. Open a new terminal tab and run: split"
+echo "✓ All done. Open a new terminal tab and run: prsplit"
 echo "   Works from any git repo — no setup needed per project."
 echo ""
 echo "   To update the tool later, re-run:"
-echo "   curl -fsSL https://raw.githubusercontent.com/${REPO}/${BRANCH}/tools/pr-split/setup.sh | bash"
+echo "   curl -fsSL https://raw.githubusercontent.com/${REPO}/${BRANCH}/setup.sh | bash"
 echo ""
