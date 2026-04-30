@@ -321,7 +321,16 @@ def main():
             console.print("Aborted. No branches were created.")
             sys.exit(0)
 
-    created_branches = execute_plan(plan, base, origin_branch)
+    created_branches = []
+    try:
+        created_branches = execute_plan(plan, base, origin_branch)
+    except Exception as e:
+        console.print(f"\n[red]Branch creation failed:[/] {e}")
+        if created_branches:
+            console.print("[bold red]Cleaning up — deleting created branches.[/]")
+            delete_branches(created_branches)
+        sys.exit(1)
+
     display_branch_summary(plan, origin_branch, base)
 
     if args.push:
