@@ -92,6 +92,17 @@ def current_branch() -> str:
         ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
 
 
+def resolve_base(base: str) -> str:
+    if run(["git", "rev-parse", "--verify", base], check=False).returncode == 0:
+        return base
+    remote = f"origin/{base}"
+    if run(["git", "rev-parse", "--verify", remote], check=False).returncode == 0:
+        console.print(f"[dim]Base branch '{base}' not local — using {remote}[/]")
+        return remote
+    console.print(f"[red]Base branch '{base}' not found locally or on origin.[/]")
+    sys.exit(1)
+
+
 def branch_name_for(origin_branch: str, title: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
     return f"{origin_branch}/{slug}"
@@ -289,6 +300,7 @@ def main():
     args = parser.parse_args()
 
     origin_branch = current_branch()
+    base = resolve_base(args.base)
     files = get_changed_files(args.base)
 
     if not files:
@@ -305,8 +317,8 @@ def main():
             console.print("Aborted. No branches were created.")
             sys.exit(0)
 
-    created_branches = execute_plan(plan, args.base, origin_branch)
-    display_branch_summary(plan, origin_branch, args.base)
+    created_branches = execute_plan(plan, base, origin_branch)
+    display_branch_summary(plan, origin_branch, base)
 
     if args.push:
         push = True
@@ -314,7 +326,7 @@ def main():
         push = console.input("Push and open PRs on GitHub? \\[y/N]: ").strip().lower() == "y"
 
     if push:
-        push_and_create_prs(plan, args.base, origin_branch)
+        push_and_create_prs(plan, base, origin_branch)
     else:
         console.print("\n[bold red]Aborting — deleting created branches.[/]")
         delete_branches(created_branches)
