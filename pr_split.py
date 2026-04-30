@@ -285,12 +285,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="Split a branch into independent, simultaneously-mergeable PRs.")
     parser.add_argument("--base", default="main", help="Base branch (default: main)")
-    parser.add_argument("--execute", action="store_true", help="Create the git branches")
-    parser.add_argument("--push", action="store_true", help="Push branches and open PRs (implies --execute)")
+    parser.add_argument("--push", action="store_true", help="Skip confirmations and push all PRs immediately")
     args = parser.parse_args()
-
-    if args.push:
-        args.execute = True
 
     origin_branch = current_branch()
     files = get_changed_files(args.base)
@@ -304,14 +300,10 @@ def main():
     plan = ask_claude_for_plan(files)
     display_plan(plan, origin_branch)
 
-    if not args.execute:
-        console.print("[dim]Run [bold]prsplit --execute[/bold] to create the branches.[/]")
-        return
-
-    console.print("[bold yellow]This will create new git branches from[/] [cyan]main[/][bold yellow], one per PR group.[/]")
-    if console.input("Proceed? \\[y/N]: ").strip().lower() != "y":
-        console.print("Aborted. No branches were created.")
-        sys.exit(0)
+    if not args.push:
+        if console.input("Create branches? \\[y/N]: ").strip().lower() != "y":
+            console.print("Aborted. No branches were created.")
+            sys.exit(0)
 
     created_branches = execute_plan(plan, args.base, origin_branch)
     display_branch_summary(plan, origin_branch, args.base)
@@ -319,7 +311,7 @@ def main():
     if args.push:
         push = True
     else:
-        push = console.input("Push branches and open PRs on GitHub? \\[y/N]: ").strip().lower() == "y"
+        push = console.input("Push and open PRs on GitHub? \\[y/N]: ").strip().lower() == "y"
 
     if push:
         push_and_create_prs(plan, args.base, origin_branch)
