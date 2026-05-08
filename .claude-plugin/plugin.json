@@ -1,0 +1,11 @@
+{
+  "name": "pr-split",
+  "description": "Analyse and split large feature branches into smaller, reviewable PRs — no AWS or Python required",
+  "author": {
+    "name": "Checkout.com",
+    "email": "engineering@checkout.com"
+  },
+  "version": "1.0.0",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
+}

@@ -1,93 +1,71 @@
 # pr-split
 
-pr-split is a CLI utility that leverages Claude (via AWS Bedrock) to automatically decompose large feature branches into multiple small, independent pull requests. Each PR targets `main` directly with no cross-dependencies, allowing them to be reviewed and merged in parallel.
+A Claude Code plugin that intelligently decomposes large feature branches into smaller, stacked pull requests — no AWS credentials, no Python setup, no external scripts.
 
-## What problem does it solve?
+Claude analyses your diff, infers file dependencies from imports, groups files by architectural layer, and can create the branches and open the PRs for you.
 
-Large feature branches are notoriously difficult to review. A single PR containing 20+ files across multiple layers puts the entire burden on one reviewer and blocks merging until every single file is approved.
+## Install
 
-pr-split analyses your changes, understands file relationships (via imports and namespaces), and groups them into the smallest possible independent units.
-
-## The Transformation
-
-**Before:** `feature/bacs-payment` → 1 huge PR into `main` (20 files, 1 reviewer, blocked).
-
-**After:**
-
-| Branch | Target | Files | Reviewer |
-|--------|--------|-------|----------|
-| `feature/bacs-payment/domain-models` | `main` | 4 files | Reviewer A |
-| `feature/bacs-payment/payment-handler` | `main` | 5 files | Reviewer B |
-| `feature/bacs-payment/api-endpoints` | `main` | 4 files | Reviewer C |
-| `feature/bacs-payment/tests` | `main` | 4 files | Reviewer D |
-
-All four PRs are open at the same time, reviewed in parallel, and merged independently as they are ready.
-
-## Setup
-
-Run this once on any machine to install all dependencies and configure your environment:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/tanjil-choudhury-cko/pr-split/main/setup.sh | bash
+```
+/plugin marketplace add <owner>/pr-split
+/plugin install pr-split@<owner>/pr-split
 ```
 
-This automated script handles:
+Or test locally from this directory:
 
-- **Tools:** Installs Homebrew, `just`, `gh` (GitHub CLI), and `aws` CLI
-- **Python:** Sets up `boto3` and `rich`
-- **Shell:** Wires up Bedrock environment variables and the `split` command in your `~/.zshrc`
-- **Auth:** Triggers the browser login for AWS (`playground14`) and GitHub
-
-No repo cloning required — run the command above from anywhere and `split` will work in every git repo on your machine.
-
-> [!IMPORTANT]
-> **AWS Session Expiry:** AWS credentials expire every ~8 hours. If you see an authentication error, re-run:
-> ```bash
-> aws login --profile playground14 --region eu-west-1
-> ```
-
-## Usage
-
-Run all commands from the root of any git repository.
-
-### Standard flow
-
-```bash
-prsplit
+```
+claude --plugin-dir ./
 ```
 
-1. Claude analyses your branch and prints a table of proposed groups
-2. **Create branches?** Type `y` to create local branches from `main`
-3. **Push and open PRs?** Type `y` to push and open PRs on GitHub
+## Skills
 
-> If you choose `n` at the push step, the tool automatically deletes the local branches it just created to keep your workspace clean.
+| Command | What it does |
+|---------|-------------|
+| `/pr-split:plan` | Analyse the branch and display a proposed split plan |
+| `/pr-split:execute` | Create branches and open stacked PRs (shows plan + asks for confirmation first) |
+| `/pr-split:revert` | Close open PRs and delete split branches |
 
-### One-shot (skip all confirmations)
+### Options
 
-```bash
-prsplit --push
+Both `plan` and `execute` accept:
+
+- `--base <branch>` — base branch to diff against (default: `main`)
+- `--max <n>` — maximum files per PR (default: `8`)
+
+## Example output
+
 ```
+┌─────────────────────────────────────────────────────────────────────┐
+│  PR Split Plan  ·  25 files  ·  4 PRs  ·  max 8 files each          │
+└─────────────────────────────────────────────────────────────────────┘
 
-### Targeting a different base branch
+PR 1 of 4  ·  "Core models"                                   4 files
+─────────────────────────────────────────────────────────────────────
+  src/PaymentSetup.Common/Models/PaymentMethodNames.cs
+  src/PaymentSetup.Common/Models/PaymentMethods/Blik.cs
+  src/PaymentSetup.Common/Models/PaymentMethods/PaymentMethods.cs
+  src/PaymentSetup.Common/Models/PaymentMethods/Scheme.cs
 
-```bash
-prsplit --base develop
+PR 2 of 4  ·  "OpenAPI + proto"                               4 files
+─────────────────────────────────────────────────────────────────────
+  openapi/source/components/schemas/Payments/Setups/Blik.yaml
+  openapi/source/components/schemas/Payments/Setups/PaymentSetup.yaml
+  openapi/openapi.yaml
+  protos/cko.paymentsetup.proto
+  depends on: PR 1
+
+To execute this plan:  /pr-split:execute
+To undo an execution:  /pr-split:revert
 ```
 
 ## How it works
 
-1. **File discovery** — Detects all changed files (committed, staged, and untracked)
-2. **Dependency analysis** — Reads the first 30 lines of every file to parse imports and namespace dependencies
-3. **LLM reasoning** — Sends the metadata to Claude via AWS Bedrock; Claude ensures that if File B depends on File A they land in the same PR
-4. **Git automation** — Handles `git checkout`, staging, committing, and `gh pr create` targeting your base branch
+1. **Diff** — runs `git diff <base>...HEAD --name-only`
+2. **Dependency analysis** — reads the first 60 lines of each file to detect imports and cross-references between changed files
+3. **Layer classification** — groups files by architectural layer (Foundation → Logic → Entry points → Tests → Docs) to ensure each PR is independently buildable
+4. **Stacking** — when executing, PR 2's base branch is PR 1's branch, creating a reviewable chain
 
-## Troubleshooting
+## Prerequisites
 
-| Error | Resolution |
-|-------|-----------|
-| `LoginInsufficientPermissions` | Run `aws login --profile playground14 --region eu-west-1` |
-| `No changed files found against main` | Run `git add -A` to stage your files first |
-| `zsh: command not found: split` | Open a new terminal tab or run `source ~/.zshrc` |
-| `gh pr create` SAML error | GitHub Settings → Authorized OAuth Apps → Grant `cko-core-platform` access |
-| `ValidationException: model ID` | Run `source ~/.zshrc` to reload your environment |
-| Branch already exists | Run `git branch -D <branch-name>` and retry |
+- `git` with a branch checked out against `main` (or `master` / `develop`)
+- `gh` (GitHub CLI), authenticated: `gh auth login`
