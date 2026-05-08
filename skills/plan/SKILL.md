@@ -3,13 +3,24 @@ name: plan
 description: Analyse the current branch's changed files and propose a split into smaller, reviewable PRs. Use when the user wants to see how a large branch can be broken into reviewable PRs before committing to execution.
 argument-hint: "[--base <branch>] [--max <n>] [--effort normal|high] [--strategy independent|stacked]"
 allowed-tools: ["Bash", "Read", "Grep"]
-version: 1.0.0
+version: 1.1.0
 ---
 
 # PR Split Plan
 
 Use when: the user wants to see how a large branch can be split into smaller, reviewable PRs.
 Do not use when: the branch has fewer than 5 changed files, or the user just wants to create a single PR normally.
+
+## Hard rules — read-only
+
+This skill is **strictly read-only**. It must not:
+
+- Run `git checkout`, `git commit`, `git push`, `git rm`, `git reset`, or any other git command that modifies state
+- Run any `gh` command that creates, edits, or deletes resources (`gh repo create`, `gh pr create`, etc.)
+- Modify any files in the working tree, including `.gitignore`
+- Suggest, prepare, or execute remediation for problems found in the repo
+
+If the repo is in a state that prevents analysis (e.g. no `main` branch, no commits, large numbers of build artefacts in the diff), say so and stop. The user fixes their repo; this skill only reads it.
 
 ## Arguments
 - `--base <branch>` — base branch to diff against (default: `main`, fallback: `master`, then `develop`)
@@ -96,6 +107,12 @@ Group files into PRs such that:
 - Tests go in the same PR as the feature they test, or the immediately following PR
 - Give each PR a short, descriptive title
 
+**Strategy override discipline:** if the user did not pass `--strategy`, use the default (`independent`). If you believe the situation strongly favours `stacked` (hard compile-time dependencies that span PRs, or PRs that won't build in isolation), do **not** silently switch. Show the plan with the default AND surface a clearly-marked recommendation:
+
+> ⚠️ Recommendation: I'd actually suggest `--strategy stacked` here because <reason>. To use it, re-run with `--strategy stacked`.
+
+Always let the user make the call. Never override the default without saying so loudly.
+
 ### 6. Display the plan
 
 ```
@@ -132,10 +149,13 @@ To undo an execution:  /pr-split:revert
 ```
 
 ## Checklist
+- [ ] No git/gh commands that modify state were run
+- [ ] No remediation was suggested or attempted
 - [ ] All changed files assigned to exactly one PR
 - [ ] No PR exceeds the `max` file limit
 - [ ] Dependency ordering is correct
 - [ ] Each PR has a clear, descriptive title
 - [ ] Effort level and strategy shown in the header
 - [ ] Each PR shows its base branch
+- [ ] If the default strategy was overridden, the override was loudly noted (not silent)
 - [ ] Blast radius section shown when `--effort high` finds reverse deps
